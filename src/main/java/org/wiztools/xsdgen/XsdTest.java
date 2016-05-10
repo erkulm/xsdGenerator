@@ -9,7 +9,7 @@ public class XsdTest {
 	public static void main(String[] args) {
 		XsdGen gen = new XsdGen();
 		try {
-			gen.parse(new File("C:\\Users\\mahmut.erkul\\Desktop\\FATURA MUHURSUZ2.XML"));
+			gen.parse(new File("/Users/mahmut/Desktop/New folder/FATURA MUHURSUZ2.XML"));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -17,7 +17,7 @@ public class XsdTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		File out = new File("C:\\Users\\mahmut.erkul\\Desktop\\xsdout4.xsd");
+		File out = new File("/Users/mahmut/Desktop/xsdout5.xsd");
 		try {
 			gen.write(new FileOutputStream(out));
 		} catch (FileNotFoundException e) {

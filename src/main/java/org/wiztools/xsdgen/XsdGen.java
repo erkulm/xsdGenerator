@@ -92,7 +92,7 @@ public final class XsdGen {
 			final String nsURI = e.getNamespaceURI();
 			final String nsName = e.getQualifiedName();
 
-			if (!elementNamesProcessed.contains(nsName) && getParentOutElement(parentOutElement, children.get(i).getLocalName()) == null) { // process
+			if (!elementNamesProcessed.contains(nsName) && !alreadyExists(parentOutElement, nsName)) { // process
 																																			// an
 																																			// element
 																																			// first
@@ -169,14 +169,31 @@ public final class XsdGen {
 
 		}
 		return null;
-		// if (base.getAttribute("name") != null ?
-		// base.getAttribute("name").getValue().equalsIgnoreCase(name) : false)
-		// {
-		// return base;
-		// }
-		// else {
-		// return null;
-		// }
+	}
+	
+	private Boolean alreadyExists(Element element, String name){
+		Boolean exists = Boolean.FALSE;
+		if (element!=null && element.getChildCount()>0) {
+			
+			Elements children = element.getChildElements();
+			
+			for (int i = 0; i < children.size(); i++) {
+				if (children.get(i).getAttribute("name") != null ? children.get(i).getAttribute("name").getValue().equalsIgnoreCase("complexType") : false) {
+					Elements children2 = children.get(i).getChildElements();
+					for (int j = 0; j < children2.size(); j++) {
+						if (children2.get(j).getAttribute("name") != null ? children2.get(j).getAttribute("name").getValue().equalsIgnoreCase("sequence") : false) {
+							Elements children3 = children2.get(j).getChildElements();
+							for (int k = 0; k < children3.size(); k++) {
+								if (children3.get(k).getAttribute("name") != null ? children3.get(k).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
+									exists = Boolean.TRUE;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return exists;
 	}
 
 	private Element getDescendantByLocalName(Element base, String name) {
