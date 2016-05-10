@@ -93,11 +93,11 @@ public final class XsdGen {
 			final String nsName = e.getQualifiedName();
 
 			if (!elementNamesProcessed.contains(nsName) && !alreadyExists(parentOutElement, nsName)) { // process
-																																			// an
-																																			// element
-																																			// first
-																																			// time
-																																			// only
+																										// an
+																										// element
+																										// first
+																										// time
+																										// only
 				if (e.getChildElements().size() > 0) { // Is complex type with
 														// children!
 					Element element = new Element(xsdPrefix + ":element", XSD_NS_URI);
@@ -155,7 +155,8 @@ public final class XsdGen {
 			Elements children = base.getChildElements();
 			boolean found = false;
 			for (int i = 0; i < children.size(); i++) {
-				if (children.get(i).getAttribute("name") != null ? children.get(i).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
+				if (children.get(i).getAttribute("name") != null
+						? children.get(i).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
 					found = true;
 					return children.get(i);
 				}
@@ -170,26 +171,17 @@ public final class XsdGen {
 		}
 		return null;
 	}
-	
-	private Boolean alreadyExists(Element element, String name){
+
+	private Boolean alreadyExists(Element element, String name) {
 		Boolean exists = Boolean.FALSE;
-		if (element!=null && element.getChildCount()>0) {
-			
-			Elements children = element.getChildElements();
-			
-			for (int i = 0; i < children.size(); i++) {
-				if (children.get(i).getAttribute("name") != null ? children.get(i).getAttribute("name").getValue().equalsIgnoreCase("complexType") : false) {
-					Elements children2 = children.get(i).getChildElements();
-					for (int j = 0; j < children2.size(); j++) {
-						if (children2.get(j).getAttribute("name") != null ? children2.get(j).getAttribute("name").getValue().equalsIgnoreCase("sequence") : false) {
-							Elements children3 = children2.get(j).getChildElements();
-							for (int k = 0; k < children3.size(); k++) {
-								if (children3.get(k).getAttribute("name") != null ? children3.get(k).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
-									exists = Boolean.TRUE;
-								}
-							}
-						}
-					}
+		if (element != null && element.getChildCount() > 0) {
+
+			Elements children3 = element.getChildElements();
+
+			for (int k = 0; k < children3.size(); k++) {
+				if (children3.get(k).getAttribute("name") != null
+						? children3.get(k).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
+					exists = Boolean.TRUE;
 				}
 			}
 		}
@@ -201,7 +193,8 @@ public final class XsdGen {
 			Elements children = base.getChildElements();
 			boolean found = false;
 			for (int i = 0; i < children.size(); i++) {
-				if (children.get(i).getLocalName() != null ? children.get(i).getLocalName().equalsIgnoreCase(name) : false) {
+				if (children.get(i).getLocalName() != null ? children.get(i).getLocalName().equalsIgnoreCase(name)
+						: false) {
 					found = true;
 					return children.get(i);
 				}
@@ -225,7 +218,8 @@ public final class XsdGen {
 		// }
 	}
 
-	private void processOccurences(final Element element, final Element parent, final String localName, final String nsURI) {
+	private void processOccurences(final Element element, final Element parent, final String localName,
+			final String nsURI) {
 		if (parent.getChildElements(localName, nsURI).size() > 1) {
 			element.addAttribute(new Attribute("maxOccurs", "unbounded"));
 		} else {
