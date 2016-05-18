@@ -51,7 +51,7 @@ public class XsdGenMain {
         if(cliParser.xsdPrefix != null) {
             config.setXsdPrefix(cliParser.xsdPrefix);
         }
-        final XsdGen xsdGen = new XsdGen(config);
+        final XsdgenJava xsdGen = new XsdgenJava(config);
 
         // Charset
         final Charset charset;

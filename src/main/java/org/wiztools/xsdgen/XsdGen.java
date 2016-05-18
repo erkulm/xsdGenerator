@@ -12,13 +12,10 @@ import java.util.Set;
 import org.wiztools.commons.Charsets;
 import org.wiztools.commons.StringUtil;
 
-import nu.xom.Attribute;
-import nu.xom.Builder;
-import nu.xom.Document;
-import nu.xom.Element;
-import nu.xom.Elements;
-import nu.xom.ParsingException;
-import nu.xom.Serializer;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
 
 /**
  * @author subWiz
@@ -50,16 +47,20 @@ public final class XsdGen {
 		this.enableMaxOccursOnce = config.isEnableMaxOccursOnce();
 	}
 
+	@SuppressWarnings("null")
 	private void processAttributes(final Element inElement, final Element outElement) {
-		for (int i = 0; i < inElement.getAttributeCount(); i++) {
-			final Attribute attr = inElement.getAttribute(i);
-			final String name = attr.getLocalName();
-			final String value = attr.getValue();
-			Element attrElement = new Element(xsdPrefix + ":attribute", XSD_NS_URI);
-			attrElement.addAttribute(new Attribute("name", name));
-			attrElement.addAttribute(new Attribute("type", xsdPrefix + TypeInferenceUtil.getTypeOfContent(value)));
-			attrElement.addAttribute(new Attribute("use", "required"));
-			outElement.appendChild(attrElement);
+		NamedNodeMap attributesMap = inElement.getAttributes();
+		
+		for (int i = 0; i < attributesMap.getLength(); i++) {
+			final Node attribute = attributesMap.item(i);
+			final String name = attribute.getLocalName();
+			final String value = attribute.getNodeValue();
+			Element attributeElement = null;
+			attributeElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + "attribute");
+			attributeElement.setAttribute("name", name);
+			attributeElement.setAttribute("type", xsdPrefix + TypeInferenceUtil.getTypeOfContent(value));
+			attributeElement.setAttribute("use"," required");
+			outElement.appendChild(attributeElement);
 		}
 	}
 
@@ -67,14 +68,13 @@ public final class XsdGen {
 		// Adding complexType element:
 		Element complexType = null;
 		Element sequence = null;
-		if (parentOutElement.getChildCount() == 0) {
-			complexType = new Element(xsdPrefix + ":complexType", XSD_NS_URI);
-			complexType.addAttribute(new Attribute("mixed", "true"));
-			sequence = new Element(xsdPrefix + ":sequence", XSD_NS_URI);
+		if (parentOutElement.getChildNodes().getLength() == 0) {
+			complexType.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":complexType");
+			sequence.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":sequence");
 			complexType.appendChild(sequence);
 			processAttributes(parent, complexType);
 		} else {
-			complexType = (Element) parentOutElement.getParent();
+			complexType = (Element) parentOutElement.getParentNode();
 			sequence = parentOutElement;
 
 		}
@@ -92,7 +92,7 @@ public final class XsdGen {
 			final String nsURI = e.getNamespaceURI();
 			final String nsName = e.getQualifiedName();
 
-			if (!elementNamesProcessed.contains(nsName) && getParentOutElement(parentOutElement, children.get(i).getLocalName()) == null) { // process
+			if (!elementNamesProcessed.contains(nsName) && getDescendant(parentOutElement, children.get(i).getLocalName()) == null) { // process
 																																			// an
 																																			// element
 																																			// first
@@ -135,57 +135,40 @@ public final class XsdGen {
 			} else if (elementNamesProcessed.contains(nsName)) {
 				Element temp = null;
 				if (e.getChildCount() > 0) { // complexType
-					temp = getParentOutElement(parentOutElement, e.getLocalName());
+					temp = getDescendant(parentOutElement, e.getLocalName());
 					if (getDescendantByLocalName(temp, "sequence") != null) {
 						temp = getDescendantByLocalName(temp, "sequence");
 					}
 				}
 				recurseGen(e, temp);
-				// Elements tempChildren = e.getChildElements();
-				// for (int j = 0; j < tempChildren.size(); j++) {
-				// recurseGen(tempChildren.get(j), temp);
-				// }
 			}
 			elementNamesProcessed.add(nsName);
 		}
 	}
 
-	private Element getParentOutElement(Element base, String name) {
+	private Element getDescendant(Element base, String name) {
 		if (base != null && base.getChildCount() > 0) {
 			Elements children = base.getChildElements();
-			boolean found = false;
 			for (int i = 0; i < children.size(); i++) {
 				if (children.get(i).getAttribute("name") != null ? children.get(i).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
-					found = true;
 					return children.get(i);
 				}
 			}
 			for (int j = 0; j < children.size(); j++) {
-				Element returned = getParentOutElement(children.get(j), name);
+				Element returned = getDescendant(children.get(j), name);
 				if (returned != null) {
 					return returned;
 				}
 			}
-
 		}
 		return null;
-		// if (base.getAttribute("name") != null ?
-		// base.getAttribute("name").getValue().equalsIgnoreCase(name) : false)
-		// {
-		// return base;
-		// }
-		// else {
-		// return null;
-		// }
 	}
 
 	private Element getDescendantByLocalName(Element base, String name) {
 		if (base != null && base.getChildCount() > 0) {
 			Elements children = base.getChildElements();
-			boolean found = false;
 			for (int i = 0; i < children.size(); i++) {
 				if (children.get(i).getLocalName() != null ? children.get(i).getLocalName().equalsIgnoreCase(name) : false) {
-					found = true;
 					return children.get(i);
 				}
 			}
@@ -195,17 +178,8 @@ public final class XsdGen {
 					return returned;
 				}
 			}
-
 		}
 		return null;
-		// if (base.getAttribute("name") != null ?
-		// base.getAttribute("name").getValue().equalsIgnoreCase(name) : false)
-		// {
-		// return base;
-		// }
-		// else {
-		// return null;
-		// }
 	}
 
 	private void processOccurences(final Element element, final Element parent, final String localName, final String nsURI) {
@@ -256,11 +230,11 @@ public final class XsdGen {
 		}
 	}
 
-	public XsdGen parse(File file) throws IOException, ParseException {
+	public XsdgenJava parse(File file) throws IOException, ParseException {
 		return parse(new FileInputStream(file));
 	}
 
-	public XsdGen parse(InputStream is) throws IOException, ParseException {
+	public XsdgenJava parse(InputStream is) throws IOException, ParseException {
 		try {
 			doc = getDocument(is);
 			return this;

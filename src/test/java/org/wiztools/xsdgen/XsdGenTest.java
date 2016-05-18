@@ -40,27 +40,27 @@ public class XsdGenTest {
     public void testParse() throws Exception {
         System.out.println("parse");
         File file = new File("src/test/resources/tv.xml");
-        new XsdGen().parse(file).write(System.out);
+        new XsdgenJava().parse(file).write(System.out);
     }
 
     @Test
     public void testParseRepeat() throws Exception {
         System.out.println("parse");
         File file = new File("src/test/resources/bathroom.xml");
-        new XsdGen().parse(file).write(System.out);
+        new XsdgenJava().parse(file).write(System.out);
     }
 
     @Test
     public void testParseAttributes() throws Exception {
         System.out.println("parse");
         File file = new File("src/test/resources/attr.xml");
-        new XsdGen().parse(file).write(System.out);
+        new XsdgenJava().parse(file).write(System.out);
     }
 
     @Test
     public void testParseNoNamespace() throws Exception {
         System.out.println("parse");
         File file = new File("src/test/resources/no-namespace.xml");
-        new XsdGen().parse(file).write(System.out);
+        new XsdgenJava().parse(file).write(System.out);
     }
 }

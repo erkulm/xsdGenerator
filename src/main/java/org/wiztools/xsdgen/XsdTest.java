@@ -7,7 +7,7 @@ import java.io.IOException;
 
 public class XsdTest {
 	public static void main(String[] args) {
-		XsdGen gen = new XsdGen();
+		XsdgenJava gen = new XsdgenJava();
 		try {
 			gen.parse(new File("C:\\Users\\mahmut.erkul\\Desktop\\FATURA MUHURSUZ2.XML"));
 		} catch (IOException e) {
