@@ -92,12 +92,12 @@ public final class XsdGen {
 			final String nsURI = e.getNamespaceURI();
 			final String nsName = e.getQualifiedName();
 
-			if (!elementNamesProcessed.contains(nsName) && getDescendant(parentOutElement, children.get(i).getLocalName()) == null) { // process
-																																			// an
-																																			// element
-																																			// first
-																																			// time
-																																			// only
+			if (!elementNamesProcessed.contains(nsName) && !alreadyExists(parentOutElement, nsName)) { // process
+																										// an
+																										// element
+																										// first
+																										// time
+																										// only
 				if (e.getChildElements().size() > 0) { // Is complex type with
 														// children!
 					Element element = new Element(xsdPrefix + ":element", XSD_NS_URI);
@@ -135,40 +135,67 @@ public final class XsdGen {
 			} else if (elementNamesProcessed.contains(nsName)) {
 				Element temp = null;
 				if (e.getChildCount() > 0) { // complexType
-					temp = getDescendant(parentOutElement, e.getLocalName());
+					temp = getParentOutElement(parentOutElement, e.getLocalName());
 					if (getDescendantByLocalName(temp, "sequence") != null) {
 						temp = getDescendantByLocalName(temp, "sequence");
 					}
 				}
 				recurseGen(e, temp);
+				// Elements tempChildren = e.getChildElements();
+				// for (int j = 0; j < tempChildren.size(); j++) {
+				// recurseGen(tempChildren.get(j), temp);
+				// }
 			}
 			elementNamesProcessed.add(nsName);
 		}
 	}
 
-	private Element getDescendant(Element base, String name) {
+	private Element getParentOutElement(Element base, String name) {
 		if (base != null && base.getChildCount() > 0) {
 			Elements children = base.getChildElements();
+			boolean found = false;
 			for (int i = 0; i < children.size(); i++) {
-				if (children.get(i).getAttribute("name") != null ? children.get(i).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
+				if (children.get(i).getAttribute("name") != null
+						? children.get(i).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
+					found = true;
 					return children.get(i);
 				}
 			}
 			for (int j = 0; j < children.size(); j++) {
-				Element returned = getDescendant(children.get(j), name);
+				Element returned = getParentOutElement(children.get(j), name);
 				if (returned != null) {
 					return returned;
 				}
 			}
+
 		}
 		return null;
+	}
+
+	private Boolean alreadyExists(Element element, String name) {
+		Boolean exists = Boolean.FALSE;
+		if (element != null && element.getChildCount() > 0) {
+
+			Elements children3 = element.getChildElements();
+
+			for (int k = 0; k < children3.size(); k++) {
+				if (children3.get(k).getAttribute("name") != null
+						? children3.get(k).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
+					exists = Boolean.TRUE;
+				}
+			}
+		}
+		return exists;
 	}
 
 	private Element getDescendantByLocalName(Element base, String name) {
 		if (base != null && base.getChildCount() > 0) {
 			Elements children = base.getChildElements();
+			boolean found = false;
 			for (int i = 0; i < children.size(); i++) {
-				if (children.get(i).getLocalName() != null ? children.get(i).getLocalName().equalsIgnoreCase(name) : false) {
+				if (children.get(i).getLocalName() != null ? children.get(i).getLocalName().equalsIgnoreCase(name)
+						: false) {
+					found = true;
 					return children.get(i);
 				}
 			}
@@ -178,11 +205,21 @@ public final class XsdGen {
 					return returned;
 				}
 			}
+
 		}
 		return null;
+		// if (base.getAttribute("name") != null ?
+		// base.getAttribute("name").getValue().equalsIgnoreCase(name) : false)
+		// {
+		// return base;
+		// }
+		// else {
+		// return null;
+		// }
 	}
 
-	private void processOccurences(final Element element, final Element parent, final String localName, final String nsURI) {
+	private void processOccurences(final Element element, final Element parent, final String localName,
+			final String nsURI) {
 		if (parent.getChildElements(localName, nsURI).size() > 1) {
 			element.addAttribute(new Attribute("maxOccurs", "unbounded"));
 		} else {
@@ -230,11 +267,11 @@ public final class XsdGen {
 		}
 	}
 
-	public XsdgenJava parse(File file) throws IOException, ParseException {
+	public XsdGen parse(File file) throws IOException, ParseException {
 		return parse(new FileInputStream(file));
 	}
 
-	public XsdgenJava parse(InputStream is) throws IOException, ParseException {
+	public XsdGen parse(InputStream is) throws IOException, ParseException {
 		try {
 			doc = getDocument(is);
 			return this;
