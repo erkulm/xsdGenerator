@@ -9,13 +9,23 @@ import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.lang.model.util.Elements;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.wiztools.commons.Charsets;
 import org.wiztools.commons.StringUtil;
-
+import org.xml.sax.SAXException;
+import org.w3c.dom.Attr;
+import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.TypeInfo;
+import org.w3c.dom.UserDataHandler;
 
 /**
  * @author subWiz
@@ -151,18 +161,16 @@ public final class XsdGen {
 	}
 
 	private Element getParentOutElement(Element base, String name) {
-		if (base != null && base.getChildCount() > 0) {
-			Elements children = base.getChildElements();
-			boolean found = false;
-			for (int i = 0; i < children.size(); i++) {
-				if (children.get(i).getAttribute("name") != null
-						? children.get(i).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
-					found = true;
-					return children.get(i);
+		NodeList children = base.getChildNodes();
+		if (base != null && children.getLength() > 0) {
+			for (int i = 0; i < children.getLength(); i++) {
+				if (children.item(i).getAttributes().getNamedItem("name") != null
+						? children.item(i).getAttributes().getNamedItem("name").getNodeValue().equalsIgnoreCase(name) : false) {
+					return (Element) children.item(i);
 				}
 			}
-			for (int j = 0; j < children.size(); j++) {
-				Element returned = getParentOutElement(children.get(j), name);
+			for (int j = 0; j < children.getLength(); j++) {
+				Element returned = getParentOutElement((Element) children.item(j), name);
 				if (returned != null) {
 					return returned;
 				}
@@ -174,13 +182,14 @@ public final class XsdGen {
 
 	private Boolean alreadyExists(Element element, String name) {
 		Boolean exists = Boolean.FALSE;
-		if (element != null && element.getChildCount() > 0) {
 
-			Elements children3 = element.getChildElements();
+		NodeList childNodes = element.getChildNodes();
+		if (element != null && element.getChildNodes().getLength() > 0) {
 
-			for (int k = 0; k < children3.size(); k++) {
-				if (children3.get(k).getAttribute("name") != null
-						? children3.get(k).getAttribute("name").getValue().equalsIgnoreCase(name) : false) {
+
+			for (int k = 0; k < childNodes.getLength(); k++) {
+				if (childNodes.item(k).getAttributes().getNamedItem("name") != null
+						? childNodes.item(k).getAttributes().getNamedItem("name").getNodeValue().equalsIgnoreCase(name) : false) {
 					exists = Boolean.TRUE;
 				}
 			}
@@ -189,18 +198,16 @@ public final class XsdGen {
 	}
 
 	private Element getDescendantByLocalName(Element base, String name) {
-		if (base != null && base.getChildCount() > 0) {
-			Elements children = base.getChildElements();
-			boolean found = false;
-			for (int i = 0; i < children.size(); i++) {
-				if (children.get(i).getLocalName() != null ? children.get(i).getLocalName().equalsIgnoreCase(name)
+		if (base != null && base.getChildNodes().getLength() > 0) {
+			NodeList children = base.getChildNodes();
+			for (int i = 0; i < children.getLength(); i++) {
+				if (children.item(i).getLocalName() != null ? children.item(i).getLocalName().equalsIgnoreCase(name)
 						: false) {
-					found = true;
-					return children.get(i);
+					return (Element) children.item(i);
 				}
 			}
-			for (int j = 0; j < children.size(); j++) {
-				Element returned = getDescendantByLocalName(children.get(j), name);
+			for (int j = 0; j < children.getLength(); j++) {
+				Element returned = getDescendantByLocalName((Element) children.item(j), name);
 				if (returned != null) {
 					return returned;
 				}
@@ -208,55 +215,53 @@ public final class XsdGen {
 
 		}
 		return null;
-		// if (base.getAttribute("name") != null ?
-		// base.getAttribute("name").getValue().equalsIgnoreCase(name) : false)
-		// {
-		// return base;
-		// }
-		// else {
-		// return null;
-		// }
 	}
 
 	private void processOccurences(final Element element, final Element parent, final String localName,
 			final String nsURI) {
-		if (parent.getChildElements(localName, nsURI).size() > 1) {
-			element.addAttribute(new Attribute("maxOccurs", "unbounded"));
+		if (parent.getChildNodes().getLength() > 1) {
+			element.setAttribute("maxOccurs", "unbounded");
 		} else {
-			element.addAttribute(new Attribute("minOccurs", "0"));
+			element.setAttribute("minOccurs", "0");
 			if (enableMaxOccursOnce)
-				element.addAttribute(new Attribute("maxOccurs", "1"));
+				element.setAttribute("maxOccurs", "1");
 		}
 	}
 
-	private Document getDocument(InputStream is) throws ParsingException, IOException {
+	@SuppressWarnings("null")
+	private Document getDocument(InputStream is) throws IOException, ParserConfigurationException, SAXException {
 		try {
-			Builder parser = new Builder();
-			Document d = parser.build(is);
-			final Element rootElement = d.getRootElement();
+			DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder parser = documentBuilderFactory.newDocumentBuilder();
+			Document d = parser.parse(is);
+			final Element rootElement = d.getDocumentElement();
 
 			// output Document
-			Element outRoot = new Element(xsdPrefix + ":schema", XSD_NS_URI);
-			Document outDoc = new Document(outRoot);
+			Element outRoot = null;
+			Document outDoc = parser.newDocument();
+			outRoot = outDoc.getDocumentElement();
+			outRoot.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":schema");
+			
 
 			// setting targetNamespace
-			final String nsPrefix = rootElement.getNamespacePrefix();
-			final boolean hasXmlns = rootElement.getNamespaceDeclarationCount() > 0;
+			final String nsPrefix = rootElement.getPrefix();
+			final boolean hasXmlns = rootElement.getNamespaceURI() != null;
 			if (hasXmlns || StringUtil.isNotEmpty(nsPrefix)) {
-				outRoot.addAttribute(new Attribute("targetNamespace", rootElement.getNamespaceURI()));
-				outRoot.addAttribute(new Attribute("elementFormDefault", "qualified"));
+				outRoot.setAttribute(rootElement.getNamespaceURI(), "targetNameSpace");
+				outRoot.setAttribute("elementFormDefault", "qualified");
 			}
 
 			// adding all other namespace attributes
-			for (int i = 0; i < rootElement.getNamespaceDeclarationCount(); i++) {
-				final String nsPrefix2 = rootElement.getNamespacePrefix(i);
-				final String nsURI = rootElement.getNamespaceURI(nsPrefix2);
-				outRoot.addNamespaceDeclaration(nsPrefix, nsURI);
-			}
+//			for (int i = 0; i < rootElement.getNamespaceDeclarationCount(); i++) {
+//				final String nsPrefix2 = rootElement.getNamespacePrefix(i);
+//				final String nsURI = rootElement.getNamespaceURI(nsPrefix2);
+//				outRoot.addNamespaceDeclaration(nsPrefix, nsURI);
+//			}
 
 			// adding the root element
-			Element rootElementXsd = new Element(xsdPrefix + ":element", XSD_NS_URI);
-			rootElementXsd.addAttribute(new Attribute("name", rootElement.getLocalName()));
+			Element rootElementXsd = null;
+			rootElementXsd.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
+			rootElementXsd.setAttribute("name", rootElement.getLocalName());
 			outRoot.appendChild(rootElementXsd);
 			recurseGen(rootElement, rootElementXsd);
 			return outDoc;
@@ -267,17 +272,13 @@ public final class XsdGen {
 		}
 	}
 
-	public XsdGen parse(File file) throws IOException, ParseException {
+	public XsdGen parse(File file) throws IOException, ParserConfigurationException, SAXException {
 		return parse(new FileInputStream(file));
 	}
 
-	public XsdGen parse(InputStream is) throws IOException, ParseException {
-		try {
+	public XsdGen parse(InputStream is) throws IOException, ParserConfigurationException, SAXException {
 			doc = getDocument(is);
 			return this;
-		} catch (ParsingException ex) {
-			throw new ParseException(ex);
-		}
 	}
 
 	public void write(final OutputStream os) throws IOException {
