@@ -1,4 +1,4 @@
-package org.wiztools.xsdgen;
+package com.hititcs.xsdgenerator;
 
 /**
  *

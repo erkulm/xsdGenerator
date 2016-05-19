@@ -1,31 +1,35 @@
-package org.wiztools.xsdgen;
+package com.hititcs.xsdgenerator;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.lang.model.util.Elements;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
-import org.wiztools.commons.Charsets;
-import org.wiztools.commons.StringUtil;
-import org.xml.sax.SAXException;
-import org.w3c.dom.Attr;
-import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.w3c.dom.TypeInfo;
-import org.w3c.dom.UserDataHandler;
+import org.wiztools.commons.Charsets;
+import org.wiztools.commons.StringUtil;
+import org.xml.sax.SAXException;
+
+import nu.xom.Serializer;
 
 /**
  * @author subWiz
@@ -74,6 +78,7 @@ public final class XsdGen {
 		}
 	}
 
+	@SuppressWarnings("null")
 	private void recurseGen(Element parent, Element parentOutElement) {
 		// Adding complexType element:
 		Element complexType = null;
@@ -94,13 +99,13 @@ public final class XsdGen {
 			//
 		}
 
-		Elements children = parent.getChildElements();
+		NodeList children = parent.getChildNodes();
 		final Set<String> elementNamesProcessed = new HashSet<>();
-		for (int i = 0; i < children.size(); i++) {
-			Element e = children.get(i);
+		for (int i = 0; i < children.getLength(); i++) {
+			Element e = (Element) children.item(i);
 			final String localName = e.getLocalName();
 			final String nsURI = e.getNamespaceURI();
-			final String nsName = e.getQualifiedName();
+			final String nsName = e.getTagName();
 
 			if (!elementNamesProcessed.contains(nsName) && !alreadyExists(parentOutElement, nsName)) { // process
 																										// an
@@ -108,53 +113,53 @@ public final class XsdGen {
 																										// first
 																										// time
 																										// only
-				if (e.getChildElements().size() > 0) { // Is complex type with
+				if (e.getChildNodes().getLength() > 0) { // Is complex type with
 														// children!
-					Element element = new Element(xsdPrefix + ":element", XSD_NS_URI);
-					element.addAttribute(new Attribute("name", localName));
+					Element element = null;
+					element.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
+					element.setAttribute("name", localName);
 					processOccurences(element, parent, localName, nsURI);
 					recurseGen(e, element); // recurse into children:
 					sequence.appendChild(element);
 
 				} else {
-					final String cnt = e.getValue();
+					final String cnt = e.getNodeValue();
 					final String eValue = cnt == null ? null : cnt.trim();
 					final String type = xsdPrefix + TypeInferenceUtil.getTypeOfContent(eValue);
-					Element element = new Element(xsdPrefix + ":element", XSD_NS_URI);
-					element.addAttribute(new Attribute("name", localName));
+					Element element = null;
+					element.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
+					element.setAttribute("name", localName);
 					processOccurences(element, parent, localName, nsURI);
 
 					// Attributes
-					final int attrCount = e.getAttributeCount();
+					final int attrCount = e.getAttributes().getLength();
 					if (attrCount > 0) {
 						// has attributes: complex type without sequence!
-						Element complexTypeCurrent = new Element(xsdPrefix + ":complexType", XSD_NS_URI);
-						complexType.addAttribute(new Attribute("mixed", "true"));
-						Element simpleContent = new Element(xsdPrefix + ":simpleContent", XSD_NS_URI);
-						Element extension = new Element(xsdPrefix + ":extension", XSD_NS_URI);
-						extension.addAttribute(new Attribute("base", type));
+						Element complexTypeCurrent = null;
+						complexTypeCurrent.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":complexType");
+						Element simpleContent = null;
+						simpleContent.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":simpleContent");
+						Element extension = null;
+						extension.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":extension");
+						extension.setAttribute("base", type);
 						processAttributes(e, extension);
 						simpleContent.appendChild(extension);
 						complexTypeCurrent.appendChild(simpleContent);
 						element.appendChild(complexTypeCurrent);
 					} else { // if no attributes, just put the type:
-						element.addAttribute(new Attribute("type", type));
+						element.setAttribute("type", type);
 					}
 					sequence.appendChild(element);
 				}
 			} else if (elementNamesProcessed.contains(nsName)) {
 				Element temp = null;
-				if (e.getChildCount() > 0) { // complexType
+				if (e.getChildNodes().getLength() > 0) { // complexType
 					temp = getParentOutElement(parentOutElement, e.getLocalName());
 					if (getDescendantByLocalName(temp, "sequence") != null) {
 						temp = getDescendantByLocalName(temp, "sequence");
 					}
 				}
 				recurseGen(e, temp);
-				// Elements tempChildren = e.getChildElements();
-				// for (int j = 0; j < tempChildren.size(); j++) {
-				// recurseGen(tempChildren.get(j), temp);
-				// }
 			}
 			elementNamesProcessed.add(nsName);
 		}
@@ -281,23 +286,32 @@ public final class XsdGen {
 			return this;
 	}
 
-	public void write(final OutputStream os) throws IOException {
+	public void write(final OutputStream os) throws IOException, TransformerException {
 		if (doc == null)
 			throw new IllegalStateException("Call parse() before calling this method!");
 		write(os, Charsets.UTF_8);
 	}
 
-	public void write(final OutputStream os, final Charset charset) throws IOException {
+	public void write(final OutputStream os, final Charset charset) throws IOException, TransformerException {
 		if (doc == null)
 			throw new IllegalStateException("Call parse() before calling this method!");
-		// Display output:
-		Serializer serializer = new Serializer(os, charset.name());
-		serializer.setIndent(4);
-		serializer.write(doc);
+		
+		TransformerFactory tf = TransformerFactory.newInstance();
+		Transformer transformer = tf.newTransformer();
+		transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+		StringWriter writer = new StringWriter();
+		transformer.transform(new DOMSource(doc), new StreamResult(writer));
+		String output = writer.getBuffer().toString().replaceAll("\n|\r", "");
+		
+		System.out.println(output);
+//		// Display output:
+//		Serializer serializer = new Serializer(os, charset.name());
+//		serializer.setIndent(4);
+//		serializer.write(doc);
 	}
 
-	@Override
-	public String toString() {
-		return doc.toXML();
-	}
+//	@Override
+//	public String toString() {
+////		return ((Object) doc).toXML();
+//	}
 }
