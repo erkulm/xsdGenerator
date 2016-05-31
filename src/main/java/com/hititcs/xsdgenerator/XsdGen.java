@@ -29,8 +29,6 @@ import org.wiztools.commons.Charsets;
 import org.wiztools.commons.StringUtil;
 import org.xml.sax.SAXException;
 
-import nu.xom.Serializer;
-
 /**
  * @author subWiz
  */
@@ -61,7 +59,6 @@ public final class XsdGen {
 		this.enableMaxOccursOnce = config.isEnableMaxOccursOnce();
 	}
 
-	@SuppressWarnings("null")
 	private void processAttributes(final Element inElement, final Element outElement) {
 		NamedNodeMap attributesMap = inElement.getAttributes();
 		
@@ -69,8 +66,7 @@ public final class XsdGen {
 			final Node attribute = attributesMap.item(i);
 			final String name = attribute.getLocalName();
 			final String value = attribute.getNodeValue();
-			Element attributeElement = null;
-			attributeElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + "attribute");
+			Element attributeElement = outElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + "attribute");
 			attributeElement.setAttribute("name", name);
 			attributeElement.setAttribute("type", xsdPrefix + TypeInferenceUtil.getTypeOfContent(value));
 			attributeElement.setAttribute("use"," required");
@@ -78,18 +74,23 @@ public final class XsdGen {
 		}
 	}
 
-	@SuppressWarnings("null")
 	private void recurseGen(Element parent, Element parentOutElement) {
 		// Adding complexType element:
 		Element complexType = null;
 		Element sequence = null;
-		if (parentOutElement.getChildNodes().getLength() == 0) {
-			complexType.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":complexType");
-			sequence.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":sequence");
+		if (parentOutElement != null && parentOutElement.getChildNodes() != null && parentOutElement.getChildNodes().getLength() == 0) {
+			complexType = parentOutElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":complexType");
+			sequence = parentOutElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":sequence");
 			complexType.appendChild(sequence);
 			processAttributes(parent, complexType);
 		} else {
-			complexType = (Element) parentOutElement.getParentNode();
+			try {
+				
+				complexType = (Element) parentOutElement.getParentNode();
+			} catch (Exception e) {
+				e.printStackTrace();
+				// TODO: handle exception
+			}
 			sequence = parentOutElement;
 
 		}
@@ -102,6 +103,9 @@ public final class XsdGen {
 		NodeList children = parent.getChildNodes();
 		final Set<String> elementNamesProcessed = new HashSet<>();
 		for (int i = 0; i < children.getLength(); i++) {
+			if (!(children.item(i).getNodeType() == javax.xml.soap.Node.ELEMENT_NODE)) {
+				continue;
+			}
 			Element e = (Element) children.item(i);
 			final String localName = e.getLocalName();
 			final String nsURI = e.getNamespaceURI();
@@ -116,7 +120,7 @@ public final class XsdGen {
 				if (e.getChildNodes().getLength() > 0) { // Is complex type with
 														// children!
 					Element element = null;
-					element.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
+					element = parentOutElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
 					element.setAttribute("name", localName);
 					processOccurences(element, parent, localName, nsURI);
 					recurseGen(e, element); // recurse into children:
@@ -127,7 +131,7 @@ public final class XsdGen {
 					final String eValue = cnt == null ? null : cnt.trim();
 					final String type = xsdPrefix + TypeInferenceUtil.getTypeOfContent(eValue);
 					Element element = null;
-					element.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
+					element = parentOutElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
 					element.setAttribute("name", localName);
 					processOccurences(element, parent, localName, nsURI);
 
@@ -136,11 +140,11 @@ public final class XsdGen {
 					if (attrCount > 0) {
 						// has attributes: complex type without sequence!
 						Element complexTypeCurrent = null;
-						complexTypeCurrent.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":complexType");
+						complexTypeCurrent = parentOutElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":complexType");
 						Element simpleContent = null;
-						simpleContent.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":simpleContent");
+						simpleContent = parentOutElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":simpleContent");
 						Element extension = null;
-						extension.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":extension");
+						extension = parentOutElement.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":extension");
 						extension.setAttribute("base", type);
 						processAttributes(e, extension);
 						simpleContent.appendChild(extension);
@@ -158,6 +162,9 @@ public final class XsdGen {
 					if (getDescendantByLocalName(temp, "sequence") != null) {
 						temp = getDescendantByLocalName(temp, "sequence");
 					}
+				}
+				if (temp == null) {
+					System.err.println("aaa");
 				}
 				recurseGen(e, temp);
 			}
@@ -233,19 +240,22 @@ public final class XsdGen {
 		}
 	}
 
-	@SuppressWarnings("null")
 	private Document getDocument(InputStream is) throws IOException, ParserConfigurationException, SAXException {
 		try {
 			DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder parser = documentBuilderFactory.newDocumentBuilder();
 			Document d = parser.parse(is);
 			final Element rootElement = d.getDocumentElement();
+			
+			DocumentBuilderFactory outDbf = DocumentBuilderFactory.newInstance();
+			DocumentBuilder outParser = outDbf.newDocumentBuilder();
+			
 
 			// output Document
 			Element outRoot = null;
-			Document outDoc = parser.newDocument();
-			outRoot = outDoc.getDocumentElement();
-			outRoot.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":schema");
+			Document outDoc = outParser.newDocument();
+			
+			outRoot = outDoc.createElementNS(XSD_NS_URI, xsdPrefix + ":schema");
 			
 
 			// setting targetNamespace
@@ -264,8 +274,7 @@ public final class XsdGen {
 //			}
 
 			// adding the root element
-			Element rootElementXsd = null;
-			rootElementXsd.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
+			Element rootElementXsd = outRoot.getOwnerDocument().createElementNS(XSD_NS_URI, xsdPrefix + ":element");
 			rootElementXsd.setAttribute("name", rootElement.getLocalName());
 			outRoot.appendChild(rootElementXsd);
 			recurseGen(rootElement, rootElementXsd);

@@ -38,7 +38,7 @@ public final class TypeInferenceUtil {
 
     public static final String XSD_STRING = ":string";
 
-    static String getTypeOfContent(final String content) {
+    public static String getTypeOfContent(final String content) {
         if(content == null) {
             return XSD_STRING;
         }

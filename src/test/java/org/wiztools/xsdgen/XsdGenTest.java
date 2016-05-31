@@ -1,12 +1,12 @@
 package org.wiztools.xsdgen;
 
 import java.io.File;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *
@@ -40,7 +40,7 @@ public class XsdGenTest {
     public void testParse() throws Exception {
         System.out.println("parse");
         File file = new File("src/test/resources/tv.xml");
-        new XsdgenJava().parse(file).write(System.out);
+        new Xsdgen().parse(file).write(System.out);
     }
 
     @Test
