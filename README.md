@@ -11,15 +11,6 @@ To view additional command-line options:
     $ java -jar xsd-gen-VERSION-jar-with-dependencies.jar -h
 
 ## As Library
-
-To add as dependency in your Maven project:
-
-```xml
-<dependency>
-  <groupId>org.wiztools</groupId>
-  <artifactId>xsd-gen</artifactId>
-  <version>VERSION</version>
-</dependency>
 ```
 
 Usage:
